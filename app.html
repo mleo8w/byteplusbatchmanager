@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BytePlus Batch Manager for SSL & WAF</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .tab-button.active {
+            background-color: #eef2ff;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="flex h-screen">
+        <!-- Left Sidebar for Tabs -->
+        <aside class="w-64 bg-white shadow-md flex flex-col">
+            <div class="p-6 border-b">
+                <h1 class="text-2xl font-bold text-gray-900">BytePlus Batch Manager</h1>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <button onclick="changeTab('ssl')" class="tab-button active w-full text-left py-2.5 px-4 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    SSL Management
+                </button>
+                <button onclick="changeTab('waf')" class="tab-button w-full text-left py-2.5 px-4 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    WAF Management
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+            <!-- SSL Tab Content -->
+            <div id="ssl-content" class="tab-content active">
+                <header class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">SSL Management</h1>
+                </header>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Left Column: Workflows -->
+                    <div class="space-y-8">
+                        <!-- Creation Workflow -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">Creation Workflow</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="ssl-cert-type" class="block text-sm font-medium text-gray-700">Certificate Type</label>
+                                    <select id="ssl-cert-type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                        <option>digicert_free_standard_dv</option>
+                                        <option selected>lets_encrypt_standard_dv</option>
+                                        <option>lets_encrypt_wildcard_dv</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="ssl-domains" class="block text-sm font-medium text-gray-700">Domains (for Step 1 & Maint 1)</label>
+                                    <textarea id="ssl-domains" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="one domain per line..."></textarea>
+                                </div>
+                                 <div>
+                                    <label for="ssl-cert-ids" class="block text-sm font-medium text-gray-700">Certificate IDs (for Step 2, 3 & Hosting 1)</label>
+                                    <textarea id="ssl-cert-ids" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="one cert-id per line..."></textarea>
+                                </div>
+                                <div>
+                                    <label for="ssl-validation-domain" class="block text-sm font-medium text-gray-700">Validation Domain</label>
+                                    <textarea id="ssl-validation-domain" rows="2" class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm" readonly></textarea>
+                                </div>
+                                <div>
+                                    <label for="ssl-validation-txt" class="block text-sm font-medium text-gray-700">DNS Validation TXT</label>
+                                    <textarea id="ssl-validation-txt" rows="2" class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm" readonly></textarea>
+                                </div>
+                                <button onclick="runSslAction('create_orders')" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Step 1: Create SSL Orders</button>
+                                <button onclick="runSslAction('get_dns_info')" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Step 2: Get DNS Validation Info</button>
+                                <button onclick="runSslAction('check_status')" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Step 3: Check Cert Status & Binding</button>
+                            </div>
+                        </div>
+
+                        <!-- Maintenance Workflow -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">Maintenance Workflow</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="expiring-certs-info" class="block text-sm font-medium text-gray-700">Expiring Certificates (Cert-ID | Validity | Days | Domain)</label>
+                                    <textarea id="expiring-certs-info" rows="5" class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm" readonly placeholder="Click 'Pull Expiring Certs' to populate..."></textarea>
+                                </div>
+                                <button onclick="runSslAction('pull_expiring')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Maint 0: Pull Expiring Certs</button>
+                                
+                                <p class="text-sm text-center text-gray-500 pt-4">1a. Copy domains from above to the "Domains" box in the Creation Workflow.</p>
+                                <div class="text-center text-2xl text-gray-400">&darr;</div>
+                                <button onclick="runSslAction('replace_orders')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Maint 1: Replace Cert Orders</button>
+                                <div class="text-center text-2xl text-gray-400">&darr;</div>
+                                <p class="text-sm text-center text-gray-500">1b. Use "Step 3: Check Cert Status" until the new cert is issued.</p>
+                                <div class="text-center text-2xl text-gray-400">&darr;</div>
+                                
+                                <div>
+                                    <label for="maint-cert-ids" class="block text-sm font-medium text-gray-700">Certificate IDs to Bind</label>
+                                    <textarea id="maint-cert-ids" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="one cert-id per line..."></textarea>
+                                </div>
+                                <div>
+                                    <label for="maint-binding-domains" class="block text-sm font-medium text-gray-700">Domains to Bind</label>
+                                    <textarea id="maint-binding-domains" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="one domain per line, must match order of Cert IDs..."></textarea>
+                                </div>
+                                <button onclick="runSslAction('bind_certs')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Maint 3: Bind Certs to Domain</button>
+                            </div>
+                        </div>
+
+                        <!-- Hosting & DNS Workflow -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">Hosting & DNS Workflow</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="hosting-cert-ids" class="block text-sm font-medium text-gray-700">Certs Ready for Hosting (Read-Only)</label>
+                                    <textarea id="hosting-cert-ids" rows="3" class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm" readonly placeholder="Run 'Push DNS API' to populate..."></textarea>
+                                </div>
+                                <button onclick="runSslAction('push_dns')" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Hosting 0: Push DNS API</button>
+                                <button onclick="runSslAction('create_hosting_task')" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Hosting 1: Check & Host</button>
+                            </div>
+                        </div>
+                        
+                        <!-- MediaLive Cert Maintenance -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">MediaLive Cert Maintenance</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="medialive-cert-ids" class="block text-sm font-medium text-gray-700">Certificate IDs for Deploy</label>
+                                    <textarea id="medialive-cert-ids" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="one cert-id per line..."></textarea>
+                                </div>
+                                <button onclick="runSslAction('pull_and_push_medialive_cert')" class="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700">MediaLive Maint 0: Pull & Push Cert</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Results -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4">Results</h2>
+                        <pre id="ssl-results-output" class="bg-gray-900 text-white p-4 rounded-md overflow-x-auto h-full min-h-[400px]">No action run yet.</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WAF Tab Content -->
+            <div id="waf-content" class="tab-content">
+                 <header class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">WAF Management</h1>
+                </header>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Left Column: WAF Workflows -->
+                    <div class="space-y-8">
+                        <!-- WAF General -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">General</h2>
+                            <div class="space-y-4">
+                                 <div>
+                                    <label for="waf-domains-general" class="block text-sm font-medium text-gray-700">Domains (for all WAF actions)</label>
+                                    <textarea id="waf-domains-general" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                                </div>
+                                <button onclick="runWafAction('add_domain')" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Add Domain to WAF</button>
+                                <button onclick="runWafAction('turn_waf_all')" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Turn WAF All</button>
+                            </div>
+                        </div>
+                        <!-- Rate Limiting -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">Rate Limiting</h2>
+                             <div class="space-y-4">
+                                <div>
+                                    <label for="waf-rl-rules" class="block text-sm font-medium text-gray-700">Rules (Paste from Spreadsheet)</label>
+                                    <textarea id="waf-rl-rules" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Paste rules here..."></textarea>
+                                </div>
+                                <button onclick="runWafAction('list_rl_rules')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">List RL Rules</button>
+                                <div class="flex space-x-2">
+                                    <button onclick="runWafAction('config_rl_rules')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Config RL</button>
+                                    <button onclick="runWafAction('update_rl_rules')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Update RL</button>
+                                    <button onclick="runWafAction('delete_rl_rules')" class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Delete RL</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Bot Management -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">Managed Bot Rules</h2>
+                            <div id="managed-bot-rules-container" class="space-y-2 max-h-60 overflow-y-auto">
+                                <!-- Managed bot rules will be dynamically inserted here -->
+                            </div>
+                             <div class="space-y-4 mt-4">
+                                <button onclick="runWafAction('list_managed_bot_rules')" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">List Managed Bot Rules</button>
+                                <button onclick="runWafAction('config_managed_bot_rules')" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Config Managed Bot Rules</button>
+                            </div>
+                        </div>
+                        <!-- SEO Bot Management -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">SEO Bot Rules</h2>
+                            <div id="seo-bot-rules-container" class="space-y-2 max-h-60 overflow-y-auto">
+                                <!-- SEO bot rules will be dynamically inserted here -->
+                            </div>
+                             <div class="space-y-4 mt-4">
+                                <button onclick="runWafAction('list_seo_bot_rules')" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">List SEO Bot Rules</button>
+                                <button onclick="runWafAction('config_seo_bot_rules')" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Config SEO Bot Rules</button>
+                            </div>
+                        </div>
+                         <!-- Vulnerability -->
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold mb-4">Vulnerability</h2>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="vul-rule-mode" class="block text-sm font-medium text-gray-700">Rule Mode</label>
+                                        <select id="vul-rule-mode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" onchange="toggleVulCustomJson()">
+                                            <option>loose</option>
+                                            <option>normal</option>
+                                            <option selected>strict</option>
+                                            <option>custom</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="vul-action" class="block text-sm font-medium text-gray-700">Action</label>
+                                        <select id="vul-action" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                            <option>allow</option>
+                                            <option selected>block</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex items-center">
+                                        <input id="vul-autotraversal" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <label for="vul-autotraversal" class="ml-2 block text-sm text-gray-900">Auto Traversal</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input id="vul-freqscan" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <label for="vul-freqscan" class="ml-2 block text-sm text-gray-900">Freq Scan</label>
+                                    </div>
+                                </div>
+                                <div id="vul-custom-json-container" class="hidden">
+                                    <label for="waf-vul-rules" class="block text-sm font-medium text-gray-700">Custom JSON Rules</label>
+                                    <textarea id="waf-vul-rules" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Paste full JSON config for custom mode..."></textarea>
+                                </div>
+                                <button onclick="runWafAction('list_vul_rules')" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">List Vul Rules</button>
+                                <button onclick="runWafAction('config_vul_rules')" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">Config Vul Rules</button>
+                            </div>
+                        </div>
+                    </div>
+                     <!-- Right Column: WAF Results -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4">Results</h2>
+                        <pre id="waf-results-output" class="bg-gray-900 text-white p-4 rounded-md overflow-x-auto h-full min-h-[400px]">No action run yet.</pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- Bot Rule Definitions ---
+        const botRuleDefinitions = {
+            "All Rules": [
+                "feed_fetcher", "http_library", "link_checker", "marketing", 
+                "screenshot_creator", "site_monitor", "speed_tester", "tool", 
+                "virus_scanner", "vulnerability_scanner", "web_scraper"
+            ],
+            "SEO Rules": [
+                "Google", "Bing", "Baidu", "Yahoo", "Yandex", "DuckDuckGo", 
+                "Seznam", "Naver", "Sogou", "Mojeek", "Apple", "360", 
+                "ByteDance", "ShenMa", "Coccoc", "Daum", "Others"
+            ],
+            "AI Bots": [
+                "Google-Extended", "ChatGPT-User", "GPTBot", "CCBot",
+                "anthropic-ai", "ClaudeBot", "PerplexityBot", "cohere-ai"
+            ]
+        };
+
+        function initializeBotRules(containerId, category) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; // Clear existing rules
+
+            const rules = botRuleDefinitions[category];
+            if (!rules) return;
+
+            rules.forEach(ruleName => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'grid grid-cols-4 gap-2 items-center';
+                ruleDiv.dataset.ruleName = ruleName;
+                
+                const checkboxLabel = document.createElement('label');
+                checkboxLabel.className = 'flex items-center space-x-2 col-span-2';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'text-sm text-gray-700';
+                nameSpan.textContent = ruleName;
+                
+                checkboxLabel.appendChild(checkbox);
+                checkboxLabel.appendChild(nameSpan);
+                
+                const actionSelect = document.createElement('select');
+                actionSelect.className = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm';
+                ['observe', 'block', 'js', 'captcha', 'pow', 'permit'].forEach(action => {
+                    const option = document.createElement('option');
+                    option.value = action;
+                    option.textContent = action;
+                    actionSelect.appendChild(option);
+                });
+                
+                const timeInput = document.createElement('input');
+                timeInput.type = 'number';
+                timeInput.value = 60;
+                timeInput.className = 'hidden mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm';
+
+                actionSelect.onchange = () => {
+                    const showTime = ['js', 'captcha', 'pow'].includes(actionSelect.value);
+                    timeInput.classList.toggle('hidden', !showTime);
+                };
+
+                ruleDiv.appendChild(checkboxLabel);
+                ruleDiv.appendChild(actionSelect);
+                ruleDiv.appendChild(timeInput);
+                container.appendChild(ruleDiv);
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeBotRules('managed-bot-rules-container', 'All Rules');
+            initializeBotRules('seo-bot-rules-container', 'SEO Rules');
+            initializeBotRules('ai-bots-container', 'AI Bots');
+        });
+
+        function toggleVulCustomJson() {
+            const mode = document.getElementById('vul-rule-mode').value;
+            const customContainer = document.getElementById('vul-custom-json-container');
+            customContainer.classList.toggle('hidden', mode !== 'custom');
+        }
+
+        // --- Tab and API Logic ---
+        function changeTab(tabName) {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => button.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            document.querySelector(`.tab-button[onclick="changeTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-content`).classList.add('active');
+        }
+
+        async function runSslAction(action) {
+            const domains = document.getElementById('ssl-domains').value.split('\n').filter(d => d.trim() !== '');
+            const cert_ids = document.getElementById('ssl-cert-ids').value.split('\n').filter(d => d.trim() !== '');
+            const cert_type = document.getElementById('ssl-cert-type').value;
+            const maint_cert_ids = document.getElementById('maint-cert-ids').value.split('\n').filter(d => d.trim() !== '');
+            const maint_binding_domains = document.getElementById('maint-binding-domains').value.split('\n').filter(d => d.trim() !== '');
+            const medialive_cert_ids = document.getElementById('medialive-cert-ids').value.split('\n').filter(d => d.trim() !== '');
+            const resultsOutput = document.getElementById('ssl-results-output');
+            resultsOutput.textContent = `Running ${action}...`;
+
+            let payload = { action, cert_type };
+            if (action === 'bind_certs') {
+                payload.domains = maint_binding_domains;
+                payload.cert_ids = maint_cert_ids;
+            } else if (action === 'replace_orders') {
+                payload.domains = domains;
+            } else if (action === 'pull_and_push_medialive_cert') {
+                payload.cert_ids = medialive_cert_ids;
+            }
+             else {
+                payload.domains = domains;
+                payload.cert_ids = cert_ids;
+            }
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/ssl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const result = await response.json();
+                
+                resultsOutput.textContent = JSON.stringify(result.raw_response || result, null, 2);
+
+                if (action === 'create_orders' && result.length > 0) {
+                    const newCertIds = result.map(r => r.success ? r.response.Result : '').filter(Boolean);
+                    document.getElementById('ssl-cert-ids').value = newCertIds.join('\n');
+                } else if (action === 'get_dns_info' && result.length > 0) {
+                    const validationDomains = result.map(r => r.success && r.response.Result.domains_to_be_validated ? r.response.Result.domains_to_be_validated[0].validation_domain : '').filter(Boolean);
+                    const validationTxts = result.map(r => r.success && r.response.Result.domains_to_be_validated ? r.response.Result.domains_to_be_validated[0].value : '').filter(Boolean);
+                    document.getElementById('ssl-validation-domain').value = validationDomains.join('\n');
+                    document.getElementById('ssl-validation-txt').value = validationTxts.join('\n');
+                } else if (action === 'check_status' && result.length > 0) {
+                    let bindingInfo = 'Certificate Bindings:\n\n';
+                    result.forEach(res => {
+                        if(res.success && res.binding_info) {
+                            bindingInfo += `${res.cert_id}: ${res.binding_info}\n`;
+                        }
+                    });
+                    resultsOutput.textContent += '\n\n' + bindingInfo;
+                } else if (action === 'pull_expiring' && result.status === 'success') {
+                    const expiringInfo = result.key_items.map(cert => {
+                        const expiryDate = new Date(cert.ExpireTime * 1000);
+                        const daysRemaining = Math.floor((expiryDate - new Date()) / (1000 * 3600 * 24));
+                        return `${cert.CertId} | ${expiryDate.toISOString().split('T')[0]} | ${daysRemaining} days | ${cert.Domain}`;
+                    }).join('\n');
+                    document.getElementById('expiring-certs-info').value = expiringInfo;
+                } else if (action === 'push_dns' && result.status === 'success') {
+                    const successful_ids = result.successful_cert_ids.join('\n');
+                    document.getElementById('hosting-cert-ids').value = successful_ids;
+                    document.getElementById('ssl-cert-ids').value = successful_ids;
+                }
+
+            } catch (error) {
+                resultsOutput.textContent = `Error: Could not connect to the local Python backend. Please ensure it is running.`;
+            }
+        }
+
+        async function runWafAction(action) {
+            const domains = document.getElementById('waf-domains-general').value.split('\n').filter(d => d.trim() !== '');
+            const resultsOutput = document.getElementById('waf-results-output');
+            resultsOutput.textContent = `Running ${action}...`;
+            
+            let payload = { action, domains };
+
+            if (action.includes('rl')) {
+                payload.rules = document.getElementById('waf-rl-rules').value;
+            } else if (action === 'list_vul_rules') {
+                 if (domains.length > 0) {
+                    payload.domains = [domains[0]];
+                }
+            } else if (action === 'config_vul_rules') {
+                const mode = document.getElementById('vul-rule-mode').value;
+                if (mode === 'custom') {
+                    payload.rules = document.getElementById('waf-vul-rules').value;
+                } else {
+                    payload.rules = {
+                        RuleMode: mode,
+                        Action: document.getElementById('vul-action').value,
+                        AutoTraversal: document.getElementById('vul-autotraversal').checked,
+                        FreqScan: document.getElementById('vul-freqscan').checked
+                    };
+                }
+            } else if (action === 'list_managed_bot_rules' || action === 'list_seo_bot_rules') {
+                if (domains.length > 0) {
+                    payload.domains = [domains[0]];
+                }
+            } else if (action === 'config_managed_bot_rules' || action === 'config_seo_bot_rules') {
+                const botRules = [];
+                const containerId = action === 'config_managed_bot_rules' ? 'managed-bot-rules-container' : 'seo-bot-rules-container';
+                document.querySelectorAll(`#${containerId} > div`).forEach(ruleDiv => {
+                    const checkbox = ruleDiv.querySelector('input[type="checkbox"]');
+                    const ruleName = ruleDiv.dataset.ruleName;
+                    const actionSelect = ruleDiv.querySelector('select');
+                    const timeInput = ruleDiv.querySelector('input[type="number"]');
+                    const rule = {
+                        name: ruleName,
+                        enable: checkbox.checked ? 1 : 0,
+                        action: actionSelect.value
+                    };
+                    if (!timeInput.classList.contains('hidden')) {
+                        rule.time = parseInt(timeInput.value, 10);
+                    }
+                    botRules.push(rule);
+                });
+                payload.rules = botRules;
+            } else if (action === 'config_ai_bots') {
+                const botRules = [];
+                document.querySelectorAll('#ai-bots-container > div').forEach(ruleDiv => {
+                    const checkbox = ruleDiv.querySelector('input[type="checkbox"]');
+                    const ruleName = ruleDiv.dataset.ruleName;
+                    const actionSelect = ruleDiv.querySelector('select');
+                    const timeInput = ruleDiv.querySelector('input[type="number"]');
+                    const rule = {
+                        name: ruleName,
+                        enable: checkbox.checked ? 1 : 0,
+                        action: actionSelect.value
+                    };
+                    if (!timeInput.classList.contains('hidden')) {
+                        rule.time = parseInt(timeInput.value, 10);
+                    }
+                    botRules.push(rule);
+                });
+                payload.rules = botRules;
+            }
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/waf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const result = await response.json();
+                resultsOutput.textContent = JSON.stringify(result, null, 2);
+
+                if (action === 'list_managed_bot_rules' && result.status === 'success') {
+                    const rulesMap = new Map(result.data.map(r => [r.BotType, r]));
+                    document.querySelectorAll('#managed-bot-rules-container > div').forEach(ruleDiv => {
+                        const ruleName = ruleDiv.dataset.ruleName;
+                        const ruleData = rulesMap.get(ruleName);
+                        if (ruleData) {
+                            ruleDiv.querySelector('input[type="checkbox"]').checked = ruleData.Enable === 1;
+                            ruleDiv.querySelector('select').value = ruleData.Action;
+                            const timeInput = ruleDiv.querySelector('input[type="number"]');
+                            const showTime = ['js', 'captcha', 'pow'].includes(ruleData.Action);
+                            timeInput.classList.toggle('hidden', !showTime);
+                            if(showTime) timeInput.value = ruleData.VerificationExemptionTime || 60;
+                        }
+                    });
+                } else if (action === 'list_seo_bot_rules' && result.status === 'success') {
+                    const rulesMap = new Map(result.data.map(r => [r.Name, r]));
+                    document.querySelectorAll('#seo-bot-rules-container > div').forEach(ruleDiv => {
+                        const ruleName = ruleDiv.dataset.ruleName;
+                        const ruleData = rulesMap.get(ruleName);
+                        if (ruleData) {
+                            ruleDiv.querySelector('input[type="checkbox"]').checked = ruleData.Enable === 1;
+                            ruleDiv.querySelector('select').value = ruleData.Action;
+                            const timeInput = ruleDiv.querySelector('input[type="number"]');
+                            const showTime = ['js', 'captcha', 'pow'].includes(ruleData.Action);
+                            timeInput.classList.toggle('hidden', !showTime);
+                            if(showTime) timeInput.value = ruleData.VerificationExemptionTime || 60;
+                        }
+                    });
+                } else if (action === 'list_vul_rules' && result.status === 'success') {
+                    const config = result.data;
+                    document.getElementById('vul-rule-mode').value = config.RuleMode;
+                    document.getElementById('vul-action').value = config.Action;
+                    document.getElementById('vul-autotraversal').checked = config.AdvanceConfig.AutoTraversal.Enable;
+                    document.getElementById('vul-freqscan').checked = config.AdvanceConfig.FreqScan.Enable;
+                    toggleVulCustomJson();
+                }
+            } catch (error) {
+                resultsOutput.textContent = `Error: Could not connect to the local Python backend. Please ensure it is running.`;
+            }
+        }
+    </script>
+
+</body>
+</html>
