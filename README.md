@@ -1,4 +1,4 @@
-# BytePlus Batch Manager fo SSL & WAF
+# BytePlus Batch Manager for SSL & WAF
 
 ## Overview
 
