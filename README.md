@@ -6,6 +6,10 @@ The BytePlus Batch Manager for SSL & WAF is a web-based tool designed to simplif
 
 This tool runs locally on your computer, using a lightweight Python backend to securely handle all API communications with BytePlus.
 
+## Disclaimer
+
+This is an unofficial tool, written to solve specific needs. Use at your own free will if it helps you solve your batch deployment and maintenance.
+
 ---
 
 ## Prerequisites
