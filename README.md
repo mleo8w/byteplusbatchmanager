@@ -114,11 +114,12 @@ This section is for creating new certificates and performing the initial validat
 2.  **Step 2: Get DNS Validation Info**
     * With the Certificate IDs from the previous step already in the box, click the **Get DNS Validation Info** button.
     * The **Validation Domain** and **DNS Validation TXT** boxes will be populated.
-    * You must now manually add this TXT record to your DNS provider.
+    * You must now manually add this TXT record to your DNS provider. (If DNS is hosted within same account this will be automated)
 
 3.  **Step 3: Check Cert Status & Binding**
     * After adding the DNS record and waiting a few minutes for it to propagate, click the **Check Cert Status & Binding** button.
     * The **Results** panel will show the current status. Repeat this step until the status shows "Cert Issued".
+    * Remark: This usually few mins after the DNS is configure and fully propagate worldwide.
 
 #### Maintenance Workflow
 
@@ -137,6 +138,19 @@ This section is for managing existing certificates, especially for renewals.
     * After a replacement certificate has been successfully issued (verified using "Step 3"), paste its new **Certificate ID** into the **Certificate IDs to Bind** box.
     * Paste the corresponding **Domain** into the **Domains to Bind** box.
     * Click the **Bind Certs to Domain** button to deploy the new certificate to the CDN.
+
+#### Hosting & DNS Workflow
+
+This section automates the process of delegating certificate validation to BytePlus.
+
+1.  **Hosting 0: Push DNS API**
+    * Click this button to find all certificates in your account that require DNS delegation.
+    * The script will automatically create the necessary CNAME records in your BytePlus DNS zone.
+    * The **Certs Ready for Hosting** box will be populated with the Certificate IDs that were processed successfully.
+
+2.  **Hosting 1: Check & Host**
+    * The Certificate IDs from the previous step will be auto-populated in the main **Certificate IDs** box.
+    * Click this button to verify the DNS records and create the final managed hosting task, enabling auto-renewal.
 
 ### WAF Management
 
@@ -162,6 +176,11 @@ The workflow for both sections is the same.
 2.  **Configure**: Make your desired changes in the interactive UI (checking/unchecking boxes, selecting actions).
 3.  **Apply**: Add all the domains you want to apply this configuration to in the "General" domains box.
 4.  **Click "Config"**: The script will apply the configuration from the UI to every domain listed.
+
+#### Vulnerability
+
+* **List Vul Rules**: Fetches and displays the vulnerability protection settings for the *first* domain in the list, populating the interactive controls.
+* **Config Vul Rules**: Applies the settings from the interactive controls (or the custom JSON) to *all* domains listed in the "General" domains box.
 
 ---
 
